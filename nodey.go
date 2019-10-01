@@ -48,6 +48,8 @@ func (n *nodey) AllReachable(ctx context.Context, alg int) <-chan Node {
 	return nodes
 }
 
+// TODO: Add path to the return from reachable. This will need to be implemented using the parallel DFS and BFS options
+
 // Reachable determines if a node is reachable from this node
 func (n *nodey) Reachable(ctx context.Context, alg int, node Node) (reachable bool) {
 
@@ -56,15 +58,15 @@ func (n *nodey) Reachable(ctx context.Context, alg int, node Node) (reachable bo
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return reachable
 		case n, ok := <-nodes:
 			if ok {
 				if n == node {
 					reachable = true
-					return
+					return reachable
 				}
 			} else {
-				return
+				return reachable
 			}
 		}
 	}
@@ -81,6 +83,7 @@ func (n *nodey) Value() interface{} {
 
 func (n *nodey) AddEdge(relation Node, edge Edge) (err error) {
 
+	// TODO: if the edge is weighted should the edge be placed differently in the map?
 	if _, loaded := n.edges.LoadOrStore(relation, edge); loaded {
 		err = errors.Errorf("edge already exists on node %v", n.value)
 	}
@@ -102,10 +105,15 @@ func (n *nodey) Edges(ctx context.Context) <-chan Edge {
 			case <-ctx.Done():
 				return false
 			default:
-				if edge, ok := value.(Edge); ok {
-					edges <- edge
+				if value != nil {
+					if edge, ok := value.(Edge); ok {
+						edges <- edge
+					}
+					// ignore else statement here on purpose. If the value is not an edge just leave it
+				} else {
+					// delete this record from the map because it's nil
+					n.edges.Delete(key)
 				}
-				// ignore else statement here on purpose. If the value is not an edge just leave it
 			}
 
 			// Always loop to completion

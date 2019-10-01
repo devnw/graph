@@ -76,14 +76,14 @@ func (g *Graphy) AddEdge(parent Node, child Node, value interface{}, weight int)
 	// Build the edge based on the type of graph
 	if g.Directional {
 		if g.Weighted {
-			edge = &directedWedgy{
+			edge = &dwedgy{
 				parent: parent,
 				child:  child,
 				value:  value,
 				weight: weight,
 			}
 		} else {
-			edge = &directedEdgy{
+			edge = &dedgy{
 				parent: parent,
 				child:  child,
 				value:  value,

@@ -6,16 +6,16 @@ type Edge interface {
 	Child() Node
 }
 
-// DirectionalEdge is the interface that defines a directional edge in the graph
-type DirectionalEdge interface {
+// DirectedEdge is the interface that defines a directional edge in the graph
+type DirectedEdge interface {
 	Edge
 	Directional() bool
 	Value() interface{}
 }
 
-// DirectionalWeightedEdge is the interface that defines a directional weighted edge in the graph
-type DirectionalWeightedEdge interface {
-	DirectionalEdge
+// DirectedWeightedEdge is the interface that defines a directional weighted edge in the graph
+type DirectedWeightedEdge interface {
+	DirectedEdge
 	Weight() int
 }
 
