@@ -4,11 +4,15 @@ import (
 	"context"
 	"sync"
 
+	"github.com/benjivesterby/validator"
+
 	"github.com/pkg/errors"
 )
 
 // TODO: add the ability to use heuristics through function literals
 // TODO: Add support for topographical order
+// TODO: Add path loading for reachable nodes
+// TODO: Add shortest path loading for reachable nodes
 
 // Node is the interface representation of a node in the graph
 type Node interface {
@@ -74,6 +78,13 @@ func (n *nodey) Reachable(ctx context.Context, alg int, node Node) (reachable bo
 
 // DirectMutual determines if a specific node is directly mutual to this node
 func (n *nodey) DirectMutual(node Node) (mutual bool) {
+
+	if validator.IsValid(node) {
+		if edge, ok := n.edges.Load(node); ok {
+			mutual = validator.IsValid(edge)
+		}
+	}
+
 	return mutual
 }
 
@@ -82,10 +93,18 @@ func (n *nodey) Value() interface{} {
 }
 
 func (n *nodey) AddEdge(relation Node, edge Edge) (err error) {
+	if validator.IsValid(relation) {
+		if validator.IsValid(edge) {
 
-	// TODO: if the edge is weighted should the edge be placed differently in the map?
-	if _, loaded := n.edges.LoadOrStore(relation, edge); loaded {
-		err = errors.Errorf("edge already exists on node %v", n.value)
+			// TODO: if the edge is weighted should the edge be placed differently in the map?
+			if _, loaded := n.edges.LoadOrStore(relation, edge); loaded {
+				err = errors.Errorf("edge already exists on node [%v]", n.value)
+			}
+		} else {
+			err = errors.Errorf("invalid edge [%v]", edge)
+		}
+	} else {
+		err = errors.Errorf("invalid node [%v]", relation)
 	}
 
 	return err
@@ -105,14 +124,11 @@ func (n *nodey) Edges(ctx context.Context) <-chan Edge {
 			case <-ctx.Done():
 				return false
 			default:
-				if value != nil {
-					if edge, ok := value.(Edge); ok {
+				if validator.IsValid(key) && validator.IsValid(value) {
+					if edge, ok := key.(Edge); ok {
 						edges <- edge
 					}
 					// ignore else statement here on purpose. If the value is not an edge just leave it
-				} else {
-					// delete this record from the map because it's nil
-					n.edges.Delete(key)
 				}
 			}
 
