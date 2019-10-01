@@ -1,44 +1,92 @@
 package graph
 
-// Edge is the interface that defines an edge in the graph
-type Edge interface {
-	Parent() Node
-	Child() Node
-	Directional() bool
-	Weight() int
-	Value() interface{}
-}
-
-// the struct that implements the Edge interface in the graph
-// library. It's a bit edgy :P
 type edgy struct {
-	parent      Node
-	child       Node
-	directional bool
-	weight      int
-	value       interface{}
+	parent Node
+	child  Node
+	value  interface{}
 }
 
-func (e *edgy) Value() interface{} {
-	return e.value
-}
-
-func (e *edgy) Directional() bool {
-	return e.directional
-}
-
-func (e *edgy) Parent() (node Node) {
-	if !e.directional {
-		node = e.parent
-	}
-
-	return node
+func (e *edgy) Parent() Node {
+	return e.parent
 }
 
 func (e *edgy) Child() Node {
 	return e.child
 }
 
-func (e *edgy) Weight() int {
+func (e *edgy) Value() interface{} {
+	return e.value
+}
+
+type directedEdgy struct {
+	parent Node
+	child  Node
+	value  interface{}
+}
+
+func (e *directedEdgy) Parent() Node {
+	return e.parent
+}
+
+func (e *directedEdgy) Child() Node {
+	return e.child
+}
+
+func (e *directedEdgy) Value() interface{} {
+	return e.value
+}
+
+func (e *directedEdgy) Directed() bool {
+	return true
+}
+
+// wedgy is the weighted edge
+type wedgy struct {
+	parent Node
+	child  Node
+	value  interface{}
+	weight int
+}
+
+func (e *wedgy) Parent() Node {
+	return e.parent
+}
+
+func (e *wedgy) Child() Node {
+	return e.child
+}
+
+func (e *wedgy) Value() interface{} {
+	return e.value
+}
+
+func (e *wedgy) Weight() int {
 	return e.weight
+}
+
+type directedWedgy struct {
+	parent Node
+	child  Node
+	value  interface{}
+	weight int
+}
+
+func (e *directedWedgy) Parent() Node {
+	return e.parent
+}
+
+func (e *directedWedgy) Child() Node {
+	return e.child
+}
+
+func (e *directedWedgy) Value() interface{} {
+	return e.value
+}
+
+func (e *directedWedgy) Weight() int {
+	return e.weight
+}
+
+func (e *directedWedgy) Directed() bool {
+	return true
 }

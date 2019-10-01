@@ -2,6 +2,9 @@ package graph
 
 import (
 	"context"
+	"sync"
+
+	"github.com/pkg/errors"
 )
 
 // TODO: add the ability to use heuristics through function literals
@@ -9,11 +12,17 @@ import (
 
 // Node is the interface representation of a node in the graph
 type Node interface {
-	Edges() <-chan *Edge
+	Edges() <-chan Edge
+	AllReachable(ctx context.Context, alg int) <-chan Node
+	Reachable(ctx context.Context, alg int, node Node) bool
+	AddEdge(relation Node, edge Edge) error
+	DirectMutual(node Node) bool
+	Value() interface{}
 }
 
 type nodey struct {
 	value interface{}
+	edges sync.Map
 }
 
 // AllReachable returns all of the nodes that are accessible from this node
@@ -70,11 +79,38 @@ func (n *nodey) Value() interface{} {
 	return n.value
 }
 
+func (n *nodey) AddEdge(relation Node, edge Edge) (err error) {
+
+	if _, loaded := n.edges.LoadOrStore(relation, edge); loaded {
+		err = errors.Errorf("edge already exists on node %v", n.value)
+	}
+
+	return err
+}
+
+// Edges returns a channel which streams the edges for this node
 func (n *nodey) Edges(ctx context.Context) <-chan Edge {
 	var edges = make(chan Edge)
 
 	go func(edges chan<- Edge) {
 		defer close(edges)
+
+		// Iterate over the edges of the node
+		n.edges.Range(func(key, value interface{}) bool {
+
+			select {
+			case <-ctx.Done():
+				return false
+			default:
+				if edge, ok := value.(Edge); ok {
+					edges <- edge
+				}
+				// ignore else statement here on purpose. If the value is not an edge just leave it
+			}
+
+			// Always loop to completion
+			return true
+		})
 
 	}(edges)
 
