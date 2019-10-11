@@ -1,19 +1,21 @@
 package graph
 
-import "sync"
+import (
+	"context"
+	"fmt"
+	"sync"
+
+	"github.com/benjivesterby/validator"
+	"github.com/pkg/errors"
+)
 
 // Graphy is the graphy struct for building and searching the graph
 type Graphy struct {
 	Directional bool
 	Weighted    bool
 
-	nodeCountLock sync.Mutex
-	nodeCount     int
-	nodes         sync.Map
-
-	edgeCountLock sync.Mutex
-	edgeCount     int
-	edges         sync.Map
+	nodes sync.Map
+	edges sync.Map
 }
 
 // DAG determines if the graph that's build is a Directed Acyclic Graph
@@ -41,14 +43,32 @@ func (g *Graphy) Mutual(n1 Node, n2 Node) (mutual bool) {
 	return mutual
 }
 
-// AddNode adds a new node to the graph using the information passed in
-func (g *Graphy) AddNode(value interface{}) (node Node, err error) {
-	// TODO: validate inputs
+// Node adds a new node to the graph if it
+// doesn't already exist and returns the node
+// if the node already exists then it returns
+// the node object from the map
+func (g *Graphy) Node(value interface{}) (node Node, err error) {
 
-	// increment the total node count for O(1) counting
-	g.nodeCountLock.Lock()
-	g.nodeCount++
-	g.nodeCountLock.Unlock()
+	if validator.IsValid(value) {
+		n := &nodey{
+			value: value,
+		}
+
+		v, loaded := g.nodes.LoadOrStore(value, n)
+
+		var ok bool
+		if node, ok = v.(Node); ok {
+			if loaded {
+				fmt.Printf("value [%v] loaded from graph\n", node.Value())
+			} else {
+				fmt.Printf("value [%v] added to graph\n", node.Value())
+			}
+		} else {
+			err = errors.Errorf("unable to assert node type for value [%v]", v)
+		}
+	} else {
+		err = errors.Errorf("value [%v] is invalid and not added to graph", value)
+	}
 
 	return node, err
 }
@@ -56,11 +76,6 @@ func (g *Graphy) AddNode(value interface{}) (node Node, err error) {
 // RemoveNode removes a node from the graph and removes all edges that reference that node
 func (g *Graphy) RemoveNode(value interface{}) (err error) {
 	// TODO: validate inputs
-
-	// decrement the total node count for O(1) counting
-	g.nodeCountLock.Lock()
-	g.nodeCount--
-	g.nodeCountLock.Unlock()
 
 	return err
 }
@@ -107,6 +122,15 @@ func (g *Graphy) AddEdge(parent Node, child Node, value interface{}, weight int)
 
 		// TODO: Register the edge in the child node
 		// TODO: Register the edge in the edge map for the child index
+		if err = child.AddEdge(parent, edge); err == nil {
+
+			// TODO: deal with the sync map here. Need to take into account a possible duplicate edge...
+			if _, loaded := g.edges.LoadOrStore(child, edge); !loaded {
+				// TODO:
+			} else {
+				// TODO: Error here because the edge already existed
+			}
+		}
 	}
 
 	//TODO: Register the edge in the parent node
@@ -115,12 +139,7 @@ func (g *Graphy) AddEdge(parent Node, child Node, value interface{}, weight int)
 
 		// TODO: deal with the sync map here. Need to take into account a possible duplicate edge...
 		if _, loaded := g.edges.LoadOrStore(parent, edge); !loaded {
-
-			// TODO: determine if this should remain here
-			// increment the total edge count for O(1) counting
-			g.edgeCountLock.Lock()
-			g.edgeCount++
-			g.edgeCountLock.Unlock()
+			// TODO:
 		} else {
 			// TODO: Error here because the edge already existed
 		}
@@ -138,10 +157,21 @@ func (g *Graphy) UpdateEdge(parent Node, child Node, value interface{}, weight i
 // RemoveEdge removes an edge from the graph
 func (g *Graphy) RemoveEdge(parent Node, child Node) (err error) {
 
-	// decrement the total edge count for O(1) counting
-	g.edgeCountLock.Lock()
-	g.edgeCount--
-	g.edgeCountLock.Unlock()
-
 	return err
+}
+
+func (g *Graphy) String(ctx context.Context) string {
+	var output = ""
+
+	g.nodes.Range(func(key, value interface{}) bool {
+
+		if n, ok := value.(Node); ok {
+			output = fmt.Sprintf("%s%s\n", output, n.String(ctx))
+		}
+
+		// Always loop to completion
+		return true
+	})
+
+	return output
 }

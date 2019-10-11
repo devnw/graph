@@ -4,13 +4,13 @@ package graph
 type Edge interface {
 	Parent() Node
 	Child() Node
+	Value() interface{}
 }
 
 // DirectedEdge is the interface that defines a directional edge in the graph
 type DirectedEdge interface {
 	Edge
 	Directional() bool
-	Value() interface{}
 }
 
 // DirectedWeightedEdge is the interface that defines a directional weighted edge in the graph

@@ -2,6 +2,8 @@ package graph
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/benjivesterby/validator"
@@ -16,12 +18,13 @@ import (
 
 // Node is the interface representation of a node in the graph
 type Node interface {
-	Edges() <-chan Edge
+	Edges(ctx context.Context) <-chan Edge
 	AllReachable(ctx context.Context, alg int) <-chan Node
 	Reachable(ctx context.Context, alg int, node Node) bool
 	AddEdge(relation Node, edge Edge) error
 	DirectMutual(node Node) bool
 	Value() interface{}
+	String(ctx context.Context) string
 }
 
 type nodey struct {
@@ -124,11 +127,8 @@ func (n *nodey) Edges(ctx context.Context) <-chan Edge {
 			case <-ctx.Done():
 				return false
 			default:
-				if validator.IsValid(key) && validator.IsValid(value) {
-					if edge, ok := key.(Edge); ok {
-						edges <- edge
-					}
-					// ignore else statement here on purpose. If the value is not an edge just leave it
+				if edge, ok := value.(Edge); ok {
+					edges <- edge
 				}
 			}
 
@@ -139,4 +139,42 @@ func (n *nodey) Edges(ctx context.Context) <-chan Edge {
 	}(edges)
 
 	return edges
+}
+
+func (n *nodey) String(ctx context.Context) string {
+	var output = "%v: %s"
+	var weighted = "(%v, %v)"
+	var strs []string
+
+	edges := n.Edges(ctx)
+
+	func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case e, ok := <-edges:
+				if ok {
+
+					relation := e.Child()
+					if relation == n {
+						relation = e.Parent()
+					}
+
+					switch e.(type) {
+					case WeightedEdge:
+						if e, ok := e.(WeightedEdge); ok {
+							strs = append(strs, fmt.Sprintf(weighted, relation.Value(), e.Weight()))
+						}
+					default:
+						strs = append(strs, fmt.Sprintf("%v", relation.Value()))
+					}
+				} else {
+					return
+				}
+			}
+		}
+	}()
+
+	return fmt.Sprintf(output, n.Value(), strings.Join(strs, ","))
 }
