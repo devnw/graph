@@ -54,16 +54,10 @@ func (g *Graphy) Node(value interface{}) (node Node, err error) {
 			value: value,
 		}
 
-		v, loaded := g.nodes.LoadOrStore(value, n)
+		v, _ := g.nodes.LoadOrStore(value, n)
 
 		var ok bool
-		if node, ok = v.(Node); ok {
-			if loaded {
-				fmt.Printf("value [%v] loaded from graph\n", node.Value())
-			} else {
-				fmt.Printf("value [%v] added to graph\n", node.Value())
-			}
-		} else {
+		if node, ok = v.(Node); !ok {
 			err = errors.Errorf("unable to assert node type for value [%v]", v)
 		}
 	} else {
@@ -120,15 +114,17 @@ func (g *Graphy) AddEdge(parent Node, child Node, value interface{}, weight int)
 			}
 		}
 
-		// TODO: Register the edge in the child node
-		// TODO: Register the edge in the edge map for the child index
-		if err = child.AddEdge(parent, edge); err == nil {
+		if parent != child {
+			// TODO: Register the edge in the child node
+			// TODO: Register the edge in the edge map for the child index
+			if err = child.AddEdge(parent, edge); err == nil {
 
-			// TODO: deal with the sync map here. Need to take into account a possible duplicate edge...
-			if _, loaded := g.edges.LoadOrStore(child, edge); !loaded {
-				// TODO:
-			} else {
-				// TODO: Error here because the edge already existed
+				// TODO: deal with the sync map here. Need to take into account a possible duplicate edge...
+				if _, loaded := g.edges.LoadOrStore(child, edge); !loaded {
+					// TODO:
+				} else {
+					// TODO: Error here because the edge already existed
+				}
 			}
 		}
 	}
