@@ -47,17 +47,17 @@ func (g *Graphy) Mutual(n1 Node, n2 Node) (mutual bool) {
 // doesn't already exist and returns the node
 // if the node already exists then it returns
 // the node object from the map
-func (g *Graphy) Node(value interface{}) (node Node, err error) {
+func (g *Graphy) Node(value interface{}) (node *Node, err error) {
 
 	if validator.IsValid(value) {
-		n := &nodey{
-			value: value,
+		n := &Node{
+			Value: value,
 		}
 
 		v, _ := g.nodes.LoadOrStore(value, n)
 
 		var ok bool
-		if node, ok = v.(Node); !ok {
+		if node, ok = v.(*Node); !ok {
 			err = errors.Errorf("unable to assert node type for value [%v]", v)
 		}
 	} else {
@@ -75,7 +75,7 @@ func (g *Graphy) RemoveNode(value interface{}) (err error) {
 }
 
 // AddEdge adds a new edge to the graph between two nodes
-func (g *Graphy) AddEdge(parent Node, child Node, value interface{}, weight int) (err error) {
+func (g *Graphy) AddEdge(parent, child *Node, value interface{}, weight float64) (err error) {
 
 	// TODO: validate inputs
 
@@ -145,13 +145,13 @@ func (g *Graphy) AddEdge(parent Node, child Node, value interface{}, weight int)
 }
 
 // UpdateEdge updates the information in an edge for the graph
-func (g *Graphy) UpdateEdge(parent Node, child Node, value interface{}, weight int) (err error) {
+func (g *Graphy) UpdateEdge(parent *Node, child *Node, value interface{}, weight int) (err error) {
 
 	return err
 }
 
 // RemoveEdge removes an edge from the graph
-func (g *Graphy) RemoveEdge(parent Node, child Node) (err error) {
+func (g *Graphy) RemoveEdge(parent *Node, child *Node) (err error) {
 
 	return err
 }
@@ -161,8 +161,12 @@ func (g *Graphy) String(ctx context.Context) string {
 
 	g.nodes.Range(func(key, value interface{}) bool {
 
-		if n, ok := value.(Node); ok {
-			output = fmt.Sprintf("%s%s\n", output, n.String(ctx))
+		if n, ok := value.(*Node); ok {
+			if n != nil {
+				output = fmt.Sprintf("%s%s\n", output, n.String(ctx))
+			} else {
+				// TODO:
+			}
 		}
 
 		// Always loop to completion

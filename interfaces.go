@@ -2,8 +2,8 @@ package graph
 
 // Edge is the interface that defines an edge in the graph
 type Edge interface {
-	Parent() Node
-	Child() Node
+	Parent() *Node
+	Child() *Node
 	Value() interface{}
 }
 

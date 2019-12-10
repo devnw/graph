@@ -1,16 +1,16 @@
 package graph
 
 type dedgy struct {
-	parent Node
-	child  Node
+	parent *Node
+	child  *Node
 	value  interface{}
 }
 
-func (e *dedgy) Parent() Node {
+func (e *dedgy) Parent() *Node {
 	return e.parent
 }
 
-func (e *dedgy) Child() Node {
+func (e *dedgy) Child() *Node {
 	return e.child
 }
 

@@ -1,17 +1,17 @@
 package graph
 
 type dwedgy struct {
-	parent Node
-	child  Node
+	parent *Node
+	child  *Node
 	value  interface{}
-	weight int
+	weight float64
 }
 
-func (e *dwedgy) Parent() Node {
+func (e *dwedgy) Parent() *Node {
 	return e.parent
 }
 
-func (e *dwedgy) Child() Node {
+func (e *dwedgy) Child() *Node {
 	return e.child
 }
 
@@ -19,7 +19,7 @@ func (e *dwedgy) Value() interface{} {
 	return e.value
 }
 
-func (e *dwedgy) Weight() int {
+func (e *dwedgy) Weight() float64 {
 	return e.weight
 }
 

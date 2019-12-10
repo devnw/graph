@@ -17,28 +17,33 @@ import (
 // TODO: Add shortest path loading for reachable nodes
 
 // Node is the interface representation of a node in the graph
-type Node interface {
-	Edges(ctx context.Context) <-chan Edge
-	AllReachable(ctx context.Context, alg int) <-chan Node
-	Reachable(ctx context.Context, alg int, node Node) bool
-	AddEdge(relation Node, edge Edge) error
-	DirectMutual(node Node) bool
-	Value() interface{}
-	String(ctx context.Context) string
-}
+// type Node interface {
+// 	Edges(ctx context.Context) <-chan Edge
+// 	AllReachable(ctx context.Context, alg int) <-chan Node
+// 	Reachable(ctx context.Context, alg int, node Node) bool
+// 	AddEdge(relation Node, edge Edge) error
+// 	DirectMutual(node Node) bool
+// 	Value() interface{}
+// 	Cost() float64
+// 	Parent() Node
+// 	String(ctx context.Context) string
+// }
 
-type nodey struct {
-	value interface{}
-	edges sync.Map
+// Node is the interface representation of a node in the graph
+type Node struct {
+	Value  interface{}
+	Parent *Node
+	Cost   float64
+	edges  sync.Map
 }
 
 // AllReachable returns all of the nodes that are accessible from this node
 // the algorithm passed in is based off of the algorithms defined in the
 // CONST files for search constants. Defaults to BFS.
-func (n *nodey) AllReachable(ctx context.Context, alg int) <-chan Node {
-	var nodes = make(chan Node)
+func (n *Node) AllReachable(ctx context.Context, alg int) <-chan *Node {
+	var nodes = make(chan *Node)
 
-	go func(nodes chan<- Node) {
+	go func(nodes chan<- *Node) {
 		defer close(nodes)
 
 		switch alg {
@@ -58,7 +63,7 @@ func (n *nodey) AllReachable(ctx context.Context, alg int) <-chan Node {
 // TODO: Add path to the return from reachable. This will need to be implemented using the parallel DFS and BFS options
 
 // Reachable determines if a node is reachable from this node
-func (n *nodey) Reachable(ctx context.Context, alg int, node Node) (reachable bool) {
+func (n *Node) Reachable(ctx context.Context, alg int, node *Node) (reachable bool) {
 
 	var nodes = n.AllReachable(ctx, alg)
 
@@ -80,7 +85,7 @@ func (n *nodey) Reachable(ctx context.Context, alg int, node Node) (reachable bo
 }
 
 // DirectMutual determines if a specific node is directly mutual to this node
-func (n *nodey) DirectMutual(node Node) (mutual bool) {
+func (n *Node) DirectMutual(node Node) (mutual bool) {
 
 	if validator.IsValid(node) {
 		if edge, ok := n.edges.Load(node); ok {
@@ -91,17 +96,14 @@ func (n *nodey) DirectMutual(node Node) (mutual bool) {
 	return mutual
 }
 
-func (n *nodey) Value() interface{} {
-	return n.value
-}
-
-func (n *nodey) AddEdge(relation Node, edge Edge) (err error) {
+// AddEdge adds an edge from this node to the related node
+func (n *Node) AddEdge(relation *Node, edge Edge) (err error) {
 	if validator.IsValid(relation) {
 		if validator.IsValid(edge) {
 
 			// TODO: if the edge is weighted should the edge be placed differently in the map?
 			if _, loaded := n.edges.LoadOrStore(relation, edge); loaded {
-				err = errors.Errorf("edge already exists on node [%v]", n.value)
+				err = errors.Errorf("edge already exists on node [%v]", n.Value)
 			}
 		} else {
 			err = errors.Errorf("invalid edge [%v]", edge)
@@ -114,7 +116,7 @@ func (n *nodey) AddEdge(relation Node, edge Edge) (err error) {
 }
 
 // Edges returns a channel which streams the edges for this node
-func (n *nodey) Edges(ctx context.Context) <-chan Edge {
+func (n *Node) Edges(ctx context.Context) <-chan Edge {
 	var edges = make(chan Edge)
 
 	go func(edges chan<- Edge) {
@@ -141,7 +143,7 @@ func (n *nodey) Edges(ctx context.Context) <-chan Edge {
 	return edges
 }
 
-func (n *nodey) String(ctx context.Context) string {
+func (n *Node) String(ctx context.Context) string {
 	var output = "%v: %s"
 	var weighted = "(%v, %v)"
 	var strs []string
@@ -164,10 +166,10 @@ func (n *nodey) String(ctx context.Context) string {
 					switch e.(type) {
 					case WeightedEdge:
 						if e, ok := e.(WeightedEdge); ok {
-							strs = append(strs, fmt.Sprintf(weighted, relation.Value(), e.Weight()))
+							strs = append(strs, fmt.Sprintf(weighted, relation.Value, e.Weight()))
 						}
 					default:
-						strs = append(strs, fmt.Sprintf("%v", relation.Value()))
+						strs = append(strs, fmt.Sprintf("%v", relation.Value))
 					}
 				} else {
 					return
@@ -176,5 +178,5 @@ func (n *nodey) String(ctx context.Context) string {
 		}
 	}()
 
-	return fmt.Sprintf(output, n.Value(), strings.Join(strs, ","))
+	return fmt.Sprintf(output, n.Value, strings.Join(strs, ","))
 }
