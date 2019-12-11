@@ -251,3 +251,103 @@ func (g *Graphy) String(ctx context.Context) string {
 
 	return output
 }
+
+func (g *Graphy) Export(ctx context.Context) string {
+
+	direction := "undirected"
+	if g.Directional {
+		direction = "directed"
+	}
+
+	weighted := "unweighted"
+	if g.Weighted {
+		weighted = "weighted"
+	}
+
+	output := fmt.Sprintf("%s %s\n", direction, weighted)
+
+	filter := make(map[interface{}]bool)
+
+	g.nodes.Range(func(key, value interface{}) bool {
+
+		if n, ok := value.(*Node); ok {
+
+			func() {
+				edges := n.Edges(ctx)
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case e, ok := <-edges:
+						if ok {
+							if !filter[e.Child().Value] && !filter[e.Parent().Value] {
+								edge := fmt.Sprintf("%s%v=%v\n", output, e.Parent().Value, e.Child().Value)
+								if we, ok := e.(WeightedEdge); ok {
+									edge = fmt.Sprintf("%s%v=%v=%v\n", output, e.Parent().Value, e.Child().Value, we.Weight())
+								}
+
+								output = edge
+							}
+						} else {
+							return
+						}
+					}
+				}
+			}()
+
+			filter[n.Value] = true
+		}
+
+		return true
+	})
+
+	// g.edges.Range(func(key, value interface{}) bool {
+
+	// 	if e, ok := value.(Edge); ok {
+	// 		if e != nil {
+	// 			key := fmt.Sprintf("%v%v", e.Child().Value, e.Parent().Value)
+	// 			key2 := fmt.Sprintf("%v%v", e.Parent().Value, e.Child().Value)
+
+	// 			fmt.Println(key, key2, !filter[key] && !filter[key2])
+
+	// 			if !filter[key] && !filter[key2] {
+
+	// 				edge := fmt.Sprintf("%s%v=%v\n", output, e.Parent().Value, e.Child().Value)
+	// 				if we, ok := e.(WeightedEdge); ok {
+	// 					edge = fmt.Sprintf("%s%v=%v=%v\n", output, e.Parent().Value, e.Child().Value, we.Weight())
+	// 				}
+
+	// 				output = edge
+	// 				// Update the filter that this edge has been seen
+	// 				filter[key] = true
+	// 				filter[key2] = true
+	// 			}
+	// 		} else {
+	// 			// TODO:
+	// 		}
+	// 	}
+
+	// 	// Always loop to completion
+	// 	return true
+	// })
+
+	// nodes := g.Nodes(ctx)
+
+	// // Setup function literal to break out of when the loop completes
+	// func() {
+	// 	for {
+	// 		select {
+	// 		case <-ctx.Done():
+	// 			return
+	// 		case n, ok := <-nodes:
+	// 			if ok {
+	// 				output = fmt.Sprintf("%s%s\n", output, n.Export(ctx))
+	// 			} else {
+	// 				return
+	// 			}
+	// 		}
+	// 	}
+	// }()
+
+	return output
+}

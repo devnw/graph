@@ -180,3 +180,41 @@ func (n *Node) String(ctx context.Context) string {
 
 	return fmt.Sprintf(output, n.Value, strings.Join(strs, ","))
 }
+
+func (n *Node) Export(ctx context.Context) string {
+	var output = "%v=%v"
+	var weighted = "%v=%v"
+	var strs []string
+
+	edges := n.Edges(ctx)
+
+	func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case e, ok := <-edges:
+				if ok {
+
+					relation := e.Child()
+					if relation == n {
+						relation = e.Parent()
+					}
+
+					switch e.(type) {
+					case WeightedEdge:
+						if e, ok := e.(WeightedEdge); ok {
+							strs = append(strs, fmt.Sprintf(weighted, relation.Value, e.Weight()))
+						}
+					default:
+						strs = append(strs, fmt.Sprintf("%v", relation.Value))
+					}
+				} else {
+					return
+				}
+			}
+		}
+	}()
+
+	return fmt.Sprintf(output, n.Value, strings.Join(strs, "\n"))
+}

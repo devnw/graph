@@ -79,15 +79,12 @@ func (h *Heap) Down(i int) {
 				// set j as left, unless right is lower cost
 				j = left
 
-				fmt.Printf("left: %v | right: %v | size: %v \n", h.internal[left], h.internal[right], h.size)
-
 				if h.nodes[h.internal[right]] != nil && h.nodes[h.internal[right]].Cost < h.nodes[h.internal[left]].Cost {
 					j = right
 				}
 			} else {
 				j = 2 * i
 			}
-			fmt.Printf("i: %v | j: %v | size: %v \n", h.internal[i], h.internal[j], h.size)
 
 			if h.nodes[h.internal[j]] != nil {
 
@@ -197,8 +194,6 @@ func (h *Heap) ChangeCost(value interface{}, parent *Node, cost float64) {
 	h.init()
 
 	if h.nodes[value] != nil && cost < h.nodes[value].Cost {
-
-		fmt.Printf("shifting %v\n", value)
 		h.nodes[value].Parent = parent
 
 		// Update the cost of the node
