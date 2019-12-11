@@ -14,7 +14,10 @@ type Graphy struct {
 	Directional bool
 	Weighted    bool
 
-	nodes sync.Map
+	nodes     sync.Map
+	size      int
+	sizeMutty sync.Mutex
+
 	edges sync.Map
 }
 
@@ -54,7 +57,14 @@ func (g *Graphy) Node(value interface{}) (node *Node, err error) {
 			Value: value,
 		}
 
-		v, _ := g.nodes.LoadOrStore(value, n)
+		v, loaded := g.nodes.LoadOrStore(value, n)
+
+		// increment size
+		if !loaded {
+			g.sizeMutty.Lock()
+			g.size++
+			g.sizeMutty.Unlock()
+		}
 
 		var ok bool
 		if node, ok = v.(*Node); !ok {
@@ -67,9 +77,71 @@ func (g *Graphy) Node(value interface{}) (node *Node, err error) {
 	return node, err
 }
 
+func (g *Graphy) AddNode(node *Node) (err error) {
+	if validator.IsValid(node) {
+		_, loaded := g.nodes.LoadOrStore(node.Value, node)
+
+		// increment size
+		if !loaded {
+			g.sizeMutty.Lock()
+			g.size++
+			g.sizeMutty.Unlock()
+		}
+	} else {
+		// TODO:
+	}
+
+	return err
+}
+
+// Size returns the current size of the graph
+func (g *Graphy) Size() int {
+	g.sizeMutty.Lock()
+	defer g.sizeMutty.Unlock()
+
+	s := g.size
+	return s
+}
+
+// Nodes returns a full set of the nodes in the graph with their associated edges
+func (g *Graphy) Nodes(ctx context.Context) <-chan *Node {
+	nodes := make(chan *Node)
+
+	go func(nodes chan<- *Node) {
+		defer close(nodes)
+
+		g.nodes.Range(func(key, value interface{}) bool {
+
+			if n, ok := value.(*Node); ok {
+				if n != nil {
+					// Push the node onto the channel
+					select {
+					case <-ctx.Done():
+						// Break the loop
+						return false
+					case nodes <- n:
+					}
+				} else {
+					// TODO:
+				}
+			}
+
+			// Always loop to completion
+			return true
+		})
+	}(nodes)
+
+	return nodes
+}
+
 // RemoveNode removes a node from the graph and removes all edges that reference that node
 func (g *Graphy) RemoveNode(value interface{}) (err error) {
 	// TODO: validate inputs
+	g.sizeMutty.Lock()
+	defer g.sizeMutty.Unlock()
+
+	g.size--
+	// TODO: Implement removal
 
 	return err
 }
@@ -159,19 +231,23 @@ func (g *Graphy) RemoveEdge(parent *Node, child *Node) (err error) {
 func (g *Graphy) String(ctx context.Context) string {
 	var output = ""
 
-	g.nodes.Range(func(key, value interface{}) bool {
+	nodes := g.Nodes(ctx)
 
-		if n, ok := value.(*Node); ok {
-			if n != nil {
-				output = fmt.Sprintf("%s%s\n", output, n.String(ctx))
-			} else {
-				// TODO:
+	// Setup function literal to break out of when the loop completes
+	func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case n, ok := <-nodes:
+				if ok {
+					output = fmt.Sprintf("%s%s\n", output, n.String(ctx))
+				} else {
+					return
+				}
 			}
 		}
-
-		// Always loop to completion
-		return true
-	})
+	}()
 
 	return output
 }

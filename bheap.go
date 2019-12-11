@@ -2,24 +2,39 @@ package graph
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 )
 
-type heap struct {
+type Heap struct {
 	internal []interface{}
-	dict     map[interface{}]*Node
-	size     int
-	once     sync.Once
+
+	// kv mapping of a node value to the node pointer
+	nodes map[interface{}]*Node
+
+	// kv mapping of a node value to it's index in the internal array
+	values map[interface{}]int
+
+	size int
+	once sync.Once
 }
 
-func (h *heap) init() {
+func (h *Heap) Print() {
+	for i := 0; i < h.size; i++ {
+		v := h.nodes[h.internal[i]]
+		fmt.Printf("index: %v | value: %v | cost: %v\n", i, v.Value, v.Cost)
+	}
+}
+
+func (h *Heap) init() {
 	h.once.Do(func() {
 		h.internal = make([]interface{}, 0)
-		h.dict = make(map[interface{}]*Node)
+		h.nodes = make(map[interface{}]*Node)
+		h.values = make(map[interface{}]int)
 	})
 }
 
-func (h *heap) Swap(i, j int) {
+func (h *Heap) Swap(i, j int) {
 	h.init()
 
 	iv := h.internal[i]
@@ -27,51 +42,69 @@ func (h *heap) Swap(i, j int) {
 
 	// Swap the internal values for the dictionary
 	h.internal[i] = jv
+	h.values[jv] = i
+
 	h.internal[j] = iv
+	h.values[iv] = j
 }
 
-func (h *heap) Up(i int) {
+func (h *Heap) Up(i int) {
 	h.init()
 
-	if i > 1 {
-		j := i / 2 // Parent of i
-		if h.dict[h.internal[i]].Cost < h.dict[h.internal[j]].Cost {
+	if h.size > 0 {
+
+		j := 0
+		if i > 1 {
+			j = i / 2 // Parent of i
+		}
+
+		if h.nodes[h.internal[i]].Cost < h.nodes[h.internal[j]].Cost {
 			h.Swap(i, j)
 			h.Up(j)
 		}
 	}
 }
 
-func (h *heap) Down(i int) {
+func (h *Heap) Down(i int) {
 	h.init()
 
-	var j int
-	if 2*i <= h.size {
-		if 2*i < h.size {
-			left := 2 * i
-			right := (2 * i) + 1
+	if h.size > 0 {
 
-			// set j as left, unless right is lower cost
-			j = left
-			if h.dict[h.internal[right]].Cost < h.dict[h.internal[left]].Cost {
-				j = right
+		var j int
+		if 2*i <= h.size {
+			if 2*i < h.size {
+				left := 2 * i
+				right := (2 * i) + 1
+
+				// set j as left, unless right is lower cost
+				j = left
+
+				fmt.Printf("left: %v | right: %v | size: %v \n", h.internal[left], h.internal[right], h.size)
+
+				if h.nodes[h.internal[right]] != nil && h.nodes[h.internal[right]].Cost < h.nodes[h.internal[left]].Cost {
+					j = right
+				}
+			} else {
+				j = 2 * i
 			}
-		} else {
-			j = 2 * i
-		}
+			fmt.Printf("i: %v | j: %v | size: %v \n", h.internal[i], h.internal[j], h.size)
 
-		if h.dict[h.internal[j]].Cost < h.dict[h.internal[i]].Cost {
-			h.Swap(i, j)
-			h.Down(j)
+			if h.nodes[h.internal[j]] != nil {
+
+				if h.nodes[h.internal[i]] == nil || h.nodes[h.internal[j]].Cost < h.nodes[h.internal[i]].Cost {
+					h.Swap(i, j)
+					h.Down(j)
+				}
+			}
 		}
 	}
 }
 
-func (h *heap) Insert(n *Node) (err error) {
+func (h *Heap) Insert(n *Node) (err error) {
 	h.init()
 
 	// Set the dictionary value
-	h.dict[n.Value] = n
+	h.nodes[n.Value] = n
 
 	// Add the value to the internal array
 	h.internal = append(h.internal, n.Value)
@@ -79,22 +112,22 @@ func (h *heap) Insert(n *Node) (err error) {
 	// Increment the size
 	h.size++
 
+	// add the map entry for the new element's index
+	h.values[n.Value] = h.size - 1
+
 	// Heap Up
 	h.Up(h.size - 1)
 
 	return err
 }
 
-func (h *heap) Min() (index int, err error) {
+func (h *Heap) Min() (index int, err error) {
 	h.init()
 
 	if h.size > 0 {
-		if h.size == 1 {
-			// root node
-			index = 0
-		} else {
-			index = h.size - 1
-		}
+
+		// root node
+		index = 0
 	} else {
 		// empty heap
 		err = errors.New("empty heap")
@@ -103,27 +136,45 @@ func (h *heap) Min() (index int, err error) {
 	return index, err
 }
 
-func (h *heap) ExtractMin() (min *Node, err error) {
+func (h *Heap) ExtractMin() (min *Node, err error) {
 	h.init()
 
 	var mini int
 	if mini, err = h.Min(); err == nil {
 
-		min = h.dict[h.internal[mini]]
+		min = h.nodes[h.internal[mini]]
 		h.Delete(mini)
 	}
 
 	return min, err
 }
 
-func (h *heap) Delete(i int) (err error) {
+func (h *Heap) Delete(i int) (err error) {
 	h.init()
+
+	// Clean up maps
+	v := h.internal[i]
+	delete(h.nodes, v)
+	delete(h.values, v)
 
 	// Delete an entry from the internal slice while
 	// maintaining it's ordering
-	copy(h.internal[i:], h.internal[i+1:])
-	h.internal[h.size-1] = ""
-	h.internal = h.internal[:len(h.internal)-1]
+	//copy(h.internal[i:], h.internal[i+1:])
+
+	for index := i + 1; index < h.size; index++ {
+
+		// Shift cells up the array
+		v := h.internal[index]
+		h.internal[index-1] = v
+		h.values[v] = index - 1
+		h.internal[index] = nil
+	}
+
+	// decrease the size now that the heap has been re-adjusted
+	h.size--
+
+	// h.internal[h.size-1] = ""
+	// h.internal = h.internal[:len(h.internal)-1]
 
 	// Reorder the heap from the root
 	h.Down(0)
@@ -131,19 +182,33 @@ func (h *heap) Delete(i int) (err error) {
 	return err
 }
 
-func (h *heap) Find(value interface{}) (index int, err error) {
+func (h *Heap) Find(value interface{}) (index int, err error) {
 
 	return index, err
 }
 
-func (h *heap) DeleteElem(value interface{}) (err error) {
+func (h *Heap) DeleteElem(value interface{}) (err error) {
 	h.init()
 
 	return err
 }
 
-func (h *heap) SetKey(old, new interface{}) (err error) {
+func (h *Heap) ChangeCost(value interface{}, parent *Node, cost float64) {
 	h.init()
 
-	return err
+	if h.nodes[value] != nil && cost < h.nodes[value].Cost {
+
+		fmt.Printf("shifting %v\n", value)
+		h.nodes[value].Parent = parent
+
+		// Update the cost of the node
+		h.nodes[value].Cost = cost
+
+		// Move the node up the heap
+		h.Up(h.values[value])
+	}
+}
+
+func (h *Heap) Size() int {
+	return h.size
 }

@@ -16,11 +16,11 @@ type DirectedEdge interface {
 // DirectedWeightedEdge is the interface that defines a directional weighted edge in the graph
 type DirectedWeightedEdge interface {
 	DirectedEdge
-	Weight() int
+	Weight() float64
 }
 
 // WeightedEdge is the interface that defines an undirected weighted edge in the graph
 type WeightedEdge interface {
 	Edge
-	Weight() int
+	Weight() float64
 }
