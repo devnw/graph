@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/benjivesterby/validator"
+	"github.com/devnw/validator"
 	"github.com/pkg/errors"
 )
 
