@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/devnw/validator"
+	"devnw.com/validator"
 	"github.com/pkg/errors"
 )
 
